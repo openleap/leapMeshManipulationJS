@@ -1,0 +1,305 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="controller/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<script src="../three.js"></script>
+<script src="../Stats.js"></script>
+<script src="../leap.min.js"></script>
+
+
+<style>
+body{
+	position:fixed;
+	top:0px;
+	left:0px;
+}	
+
+
+#container{
+	position:fixed;
+	top:0px;
+	left:0px;
+}
+p{
+	color:#fff;	
+	position:fixed;
+	top:0px;
+	left:15px;
+}
+
+a{
+	color:#FFF;	
+}
+</style>
+
+<body>
+
+<div id="container"><p>
+	Made using <a target="_blank" href="http://mrdoob.github.com/three.js/">Three.js</a> <br/>Press 'x' to hide interface
+    
+</p></div>
+
+<script>
+
+
+
+/*
+
+	Global Cariables / Objects / Scenes , etc
+	
+
+*/
+
+mouseIsDown = false
+
+//camera for the scene, VERY large distance!
+camera = new THREE.PerspectiveCamera(70,window.innerWidth/window.innerHeight,1,8000)
+	
+//Creates a clock, mostly for use with controls
+clock = new THREE.Clock();
+
+//creates the scene for this galaxy
+scene=new THREE.Scene();
+
+camera.position.x = 500
+camera.lookAt(scene.position)
+	
+
+
+
+
+//creates renderer for this galaxy
+window.renderer=new THREE.WebGLRenderer( { clearColor: 0x000000, clearAlpha: 1 } )
+renderer.setSize( window.innerWidth, window.innerHeight );	
+
+
+//Creates Stats
+/*TAKE OUT FOR PRODUCTION*/
+window.stats = new Stats();
+stats.domElement.style.position = 'absolute';
+stats.domElement.style.bottom = '0px';
+//stats.domElement.style.visibility= 'hidden';
+
+
+//adds stats to document
+window.container=document.getElementById( 'container' )
+container.appendChild(renderer.domElement )
+container.appendChild(stats.domElement )
+
+window.addEventListener( 'resize', onWindowResize, false );
+
+function onWindowResize() {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+
+
+
+/*
+	
+	FUNSTUFF
+
+*/
+
+
+
+//using normal material, because it takes the least set up
+var material = new THREE.MeshNormalMaterial()
+material.side=2
+
+
+// This is the geometry we will be altering
+var geom = new THREE.SphereGeometry(200,10,10); 
+
+//object that is manipulated
+var sphere = new THREE.Mesh(geom, material)
+
+//This is the 'scene' that our mesh will lie within
+var rotatable = new THREE.Object3D()
+
+scene.add(rotatable)
+
+//add our object to the rotatable scene
+rotatable.add(sphere)
+
+//Function that animates everything!
+window.animate = function(){
+
+	geom.verticesNeedUpdate = true;
+	
+	stats.update();	
+		
+	renderer.render( scene, camera );
+	
+}
+
+
+//Setting up our pointables
+var pointGeo = new THREE.CubeGeometry(20,20,20)
+var pointable1 = new THREE.Mesh(pointGeo,material)
+var pointable2 = new THREE.Mesh(pointGeo, material)
+
+scene.add(pointable1)
+scene.add(pointable2)
+
+
+
+//array to keep all of the box markers for the geometry
+vertBoxArray = [] 
+
+
+
+//sets up box for vertex markers
+var smallBox = new THREE.CubeGeometry(10,10,10)
+
+//Creates a new box at ever vertex of the geom
+for(var i = 0; i<geom.vertices.length; i++){
+	
+	
+	//creates vertex markers
+	var vertBox = new THREE.Mesh(smallBox, material)
+	vertBox.position.x = geom.vertices[i].x
+	vertBox.position.y = geom.vertices[i].y
+	vertBox.position.z = geom.vertices[i].z
+	vertBox.beingPulled = false
+	
+	//adds to rotatable scene
+	rotatable.add(vertBox)
+	
+	//adds to an array that is easier to access
+	vertBoxArray.push(vertBox)
+	
+}
+
+
+
+var connection = {
+	x:0,
+	y:0,
+	z:0	
+}
+
+connector = new THREE.Mesh(new THREE.CubeGeometry(2,2,2),material)
+scene.add(connector)
+
+
+//checks to see if a vertex is being pulled
+function checkPull(){
+ 	
+	for(var i =0;i< vertBoxArray.length;i++){
+		
+		//how close the connector is to the vertex
+		var checkX = Math.abs(connector.position.x - vertBoxArray[i].position.x) 
+		var checkY = Math.abs(connector.position.y - vertBoxArray[i].position.y) 
+		var checkZ = Math.abs(connector.position.z - vertBoxArray[i].position.z) 
+		
+		if(checkX < 10 && checkY < 10 && checkZ < 10){
+			
+			//check to make sure that no other boxes are being pulled
+			var anyPulled = false
+			for(var j =0;j< vertBoxArray.length;j++){
+				if(vertBoxArray[j].beingPulled == true){
+					anyPulled = true
+					break	
+				}
+			}
+			
+			//if there are no other verticies being pulled, grab this one!
+			if(anyPulled == false){
+				vertBoxArray[i].beingPulled = true
+			}
+		}	
+		
+	}
+	
+}
+
+//sets all verticies to false for being pulled
+function clearPull(){
+	for(var i =0;i< vertBoxArray.length;i++){
+		vertBoxArray[i].beingPulled = false
+	}	
+}
+
+function pull(){
+	
+	for(var i =0; i < vertBoxArray.length;i++){
+		
+		if(vertBoxArray[i].beingPulled == true){
+			
+			//moves vertex marker to correct position
+			vertBoxArray[i].position.x = connector.position.x
+			vertBoxArray[i].position.y = connector.position.y
+			vertBoxArray[i].position.z = connector.position.z
+			
+			
+			//moves the vertex to the right position
+			sphere.geometry.vertices[i].x = connector.position.x
+			sphere.geometry.vertices[i].y = connector.position.y
+			sphere.geometry.vertices[i].z = connector.position.z
+			
+			//updates teh geometery
+			sphere.geometry.verticesNeedUpdate = true;
+		}
+	}
+	
+}
+
+
+
+var latestFrame 
+Leap.loop(function(frame) {
+	  
+	  if(frame.pointables[0]){
+		 	pointable1.position.z = -frame.pointables[0].tipPosition[0]*2
+		  	pointable1.position.y = (frame.pointables[0].tipPosition[1]-250)*2
+			pointable1.position.x = frame.pointables[0].tipPosition[2]*2
+			
+			
+			//if the second pointable is removed, then clear all being pulleds
+			if(latestFrame.pointables[1] && !frame.pointables[1]){
+				
+				clearPull()
+				
+				//move pointable2 / connector out of the frame
+				pointable2.position.x = 2000000
+				connector.position.x = 20000000  
+			}
+	  }
+	  
+	  //if there are two pointables, get the midpoint between them, and assign the 'connector to this position
+ 	 if(frame.pointables[1]){
+		 	pointable2.position.z = -frame.pointables[1].tipPosition[0]*2
+		  	pointable2.position.y = (frame.pointables[1].tipPosition[1]-250)*2
+			pointable2.position.x = frame.pointables[1].tipPosition[2]*2
+			
+			
+			connector.position.x = pointable1.position.x + (pointable2.position.x -pointable1.position.x)/2
+			connector.position.y = pointable1.position.y + (pointable2.position.y -pointable1.position.y)/2
+			connector.position.z = pointable1.position.z + (pointable2.position.z -pointable1.position.z)/2
+			
+			//check to see if any verticies are being pulled
+			checkPull()
+	  }
+	  
+	  //pull the verticies
+	  pull();
+	  
+	  latestFrame = frame
+	  	  
+	  animate();
+})
+
+
+
+
+
+</script>
+
+</body>
+</html>
