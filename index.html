@@ -5,14 +5,20 @@
 <title>Untitled Document</title>
 </head>
 
-<script src="../three.js"></script>
-<script src="../Stats.js"></script>
-<script src="../leap.min.js"></script>
 
+
+<script src="lib/three.min.js"></script>
+<script src="lib/stats.min.js"></script>
+<script src="lib/leap.min.js"></script>
+<script src="lib/dat.gui.min.js"></script>
+<script src="lib/jquery-1.7.1.min.js"></script>
+<script src="lib/Detector.js"></script>
 
 <style>
 body{
 	position:fixed;
+	font-family:"Lucida Sans Unicode", "Lucida Grande", sans-serif;
+	font-size:14px;
 	top:0px;
 	left:0px;
 }	
@@ -33,16 +39,101 @@ p{
 a{
 	color:#FFF;	
 }
+
+
 </style>
 
 <body>
 
+
 <div id="container"><p>
-	Made using <a target="_blank" href="http://mrdoob.github.com/three.js/">Three.js</a> <br/>Press 'x' to hide interface
+	Made by <a href="http://cabbibo.com">Cabbibo</a> using <a target="_blank" href="http://mrdoob.github.com/three.js/">Three.js</a> and <a target="_blank" href="https://code.google.com/p/dat-gui/">dat.gui</a><br/><br/>
+    Make a 'V' with a fingers to grab a point<br/>
+    To let go, close the 'V' your fingers make. <br/><br/>
+    Press 'x' to hide interface.
     
 </p></div>
 
+
 <script>
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+$(document).keypress(function(event){
+		var whichKey=String.fromCharCode(event.which)
+	
+		if(whichKey=='x'){
+			//$(".ui").fadeToggle()
+			toggleInterface()
+		}
+		
+		
+		
+ })
+ 
+function toggleInterface(){
+	$("#container p").toggle()
+	$(".ac").toggle()
+	$("#stats").toggle()
+}
+
+
+
+
+
+var PARAMS = function(){
+	
+	//SENSITIVIT FOR PLUCKING
+	this.sensitivity = 10
+	
+	this.rotationConstant = 100
+	this.movementConstant = 10
+	
+	
+	this.rotationX = 0
+	this.rotationY = 0 
+	this.rotationZ = 0
+	
+	this.constantRotation = false
+	this.rotationSpeedX = 0 
+	this.rotationSpeedY = 10
+	this.rotationSpeedZ = 0 
+	
+	this.cameraDistance = 500
+	
+	this.vertexMarkers = true
+	
+	this.toggleVertexMarkers = function(){
+		
+		if(this.vertexMarkers == true){
+			for(var i =0;i< vertBoxArray.length;i++){
+				rotatable.remove(vertBoxArray[i])
+			}
+			this.vertexMarkers = false	
+		}else{
+			for(var i =0;i< vertBoxArray.length;i++){
+				rotatable.add(vertBoxArray[i])
+			}	
+			this.vertexMarkers = true
+		}
+		
+	}
+	
+	
+}
+
+window.params = new PARAMS()
+var gui = new dat.GUI();
+gui.add(params, 'sensitivity', 1, 40);
+gui.add(params, 'rotationX', 0, 360);
+gui.add(params, 'rotationY', 0, 360);
+gui.add(params, 'rotationZ', 0, 360);
+gui.add(params, 'constantRotation');
+gui.add(params, 'rotationSpeedX', 0, 100);
+gui.add(params, 'rotationSpeedY', 0, 100);
+gui.add(params, 'rotationSpeedZ', 0, 100);
+gui.add(params, 'cameraDistance', 0, 1000);
+
+gui.add(params, 'toggleVertexMarkers');
 
 
 
@@ -81,7 +172,7 @@ renderer.setSize( window.innerWidth, window.innerHeight );
 window.stats = new Stats();
 stats.domElement.style.position = 'absolute';
 stats.domElement.style.bottom = '0px';
-//stats.domElement.style.visibility= 'hidden';
+stats.domElement.style.visibility= 'hidden';
 
 
 //adds stats to document
@@ -115,163 +206,168 @@ material.transparent = true
 material.opacity = 1
 
 
+
+
+
 // This is the geometry we will be altering
-var geom = new THREE.SphereGeometry(200,10,10); 
+var geom = new THREE.SphereGeometry(200,20,20); 
 
-//object that is manipulated
-var sphere = new THREE.Mesh(geom, material)
 
-//This is the 'scene' that our mesh will lie within
-var rotatable = new THREE.Object3D()
-
-scene.add(rotatable)
-
-//add our object to the rotatable scene
-rotatable.add(sphere)
-
-//Function that animates everything!
-window.animate = function(){
-
-	geom.verticesNeedUpdate = true;
-	
-	stats.update();	
+		//object that is manipulated
+		var sphere = new THREE.Mesh(geom, material)
 		
-	renderer.render( scene, camera );
-	
-}
-
-
-//Setting up our pointables
-var pointGeo = new THREE.CubeGeometry(20,20,20)
-var pointable1 = new THREE.Mesh(pointGeo,material)
-var pointable2 = new THREE.Mesh(pointGeo, material)
-
-scene.add(pointable1)
-scene.add(pointable2)
-
-
-
-//array to keep all of the box markers for the geometry
-vertBoxArray = [] 
-
-
-
-//sets up box for vertex markers
-var smallBox = new THREE.CubeGeometry(10,10,10)
-
-//Creates a new box at ever vertex of the geom
-for(var i = 0; i<geom.vertices.length; i++){
-	
-	
-	//creates vertex markers
-	var vertBox = new THREE.Mesh(smallBox, material)
-	vertBox.position = new THREE.Vector3(geom.vertices[i].x,geom.vertices[i].y,geom.vertices[i].z)
-
-	vertBox.beingPulled = false
-	
-	//adds to rotatable scene
-	rotatable.add(vertBox)
-	
-	//adds to an array that is easier to access
-	vertBoxArray.push(vertBox)
-	
-}
-
-
-
-var connection = {
-	x:0,
-	y:0,
-	z:0	
-}
-
-connector = new THREE.Mesh(new THREE.CubeGeometry(2,2,2),material)
-scene.add(connector)
-var checkVec
-
-//checks to see if a vertex is being pulled
-function checkPull(){
-	
-	
-	//console.log(checkVec)
-	
-	//console.log(checkVec)
-	for(var i =0;i< vertBoxArray.length;i++){
-		checkVec = new THREE.Vector3(vertBoxArray[i].position.x, vertBoxArray[i].position.y,vertBoxArray[i].position.z)
-		checkVec.applyMatrix4(rotatable.matrixWorld)
-		//checkVec.applyMatrix4(scene.matrixWorld)
-	
-		var checkX = Math.abs(connector.position.x - checkVec.x) 
-		var checkY = Math.abs(connector.position.y - checkVec.y) 
-		var checkZ = Math.abs(connector.position.z - checkVec.z) 
+		//This is the 'scene' that our mesh will lie within
+		var rotatable = new THREE.Object3D()
 		
-		if(checkX < 20 && checkY < 20 && checkZ < 20){
-			
-			//check to make sure that no other boxes are being pulled
-			var anyPulled = false
-			for(var j =0;j< vertBoxArray.length;j++){
-				if(vertBoxArray[j].beingPulled == true){
-					anyPulled = true
-					break	
-				}
-			}
-			
-			//if there are no other verticies being pulled, grab this one!
-			if(anyPulled == false){
-				vertBoxArray[i].beingPulled = true
-				
-				
-			}
-		}	
+		scene.add(rotatable)
 		
-	}
-	
-}
-
-//sets all verticies to false for being pulled
-function clearPull(){
-	for(var i =0;i< vertBoxArray.length;i++){
-		vertBoxArray[i].beingPulled = false
-	}	
-}
-
-function pull(){
-	
-	for(var i =0; i < vertBoxArray.length;i++){
+		//add our object to the rotatable scene
+		rotatable.add(sphere)
 		
-		if(vertBoxArray[i].beingPulled == true){
+		//Function that animates everything!
+		window.animate = function(){
+		
+			geom.verticesNeedUpdate = true;
 			
-				var mInverse = new THREE.Matrix4().getInverse(rotatable.matrixWorld );
+			stats.update();	
 				
-				connectorCopy = new THREE.Vector3(connector.position.x,connector.position.y, connector.position.z)
-				
-				connectorCopy.applyMatrix4( mInverse );
-				
-				vertBoxArray[i].position.x = connectorCopy.x//checkVec.x
-				vertBoxArray[i].position.y = connectorCopy.y
-				vertBoxArray[i].position.z = connectorCopy.z
+			renderer.render( scene, camera );
 			
-			
-				//moves the vertex to the right position
-				sphere.geometry.vertices[i].x = vertBoxArray[i].position.x 
-				sphere.geometry.vertices[i].y = vertBoxArray[i].position.y
-				sphere.geometry.vertices[i].z = vertBoxArray[i].position.z
-			
-			
-			
-			//updates teh geometery
-			sphere.geometry.verticesNeedUpdate = true;
 		}
-	}
-	
-}
+		
+		
+		//Setting up our pointables
+		var pointGeo = new THREE.CubeGeometry(20,20,20)
+		var pointable1 = new THREE.Mesh(pointGeo,material)
+		var pointable2 = new THREE.Mesh(pointGeo, material)
+		
+		scene.add(pointable1)
+		scene.add(pointable2)
+		
+		
+		
+		//array to keep all of the box markers for the geometry
+		vertBoxArray = [] 
+		
+		
+		
+		//sets up box for vertex markers
+		var smallBox = new THREE.CubeGeometry(1,1,1)
+		
+		//Creates a new box at ever vertex of the geom
+		for(var i = 0; i<geom.vertices.length; i++){
+			
+			
+			//creates vertex markers
+			var vertBox = new THREE.Mesh(smallBox, material)
+			vertBox.position = new THREE.Vector3(geom.vertices[i].x,geom.vertices[i].y,geom.vertices[i].z)
+		
+			vertBox.beingPulled = false
+			
+			//adds to rotatable scene
+			rotatable.add(vertBox)
+			
+			//adds to an array that is easier to access
+			vertBoxArray.push(vertBox)
+			
+		}
+		
+		
+		
+		var connection = {
+			x:0,
+			y:0,
+			z:0	
+		}
+		
+		connector = new THREE.Mesh(new THREE.CubeGeometry(1,1,1),material)
+		scene.add(connector)
+		var checkVec
+		
+		//checks to see if a vertex is being pulled
+		function checkPull(){
+			
+			
+			//console.log(checkVec)
+			
+			//console.log(checkVec)
+			for(var i =0;i< vertBoxArray.length;i++){
+				checkVec = new THREE.Vector3(vertBoxArray[i].position.x, vertBoxArray[i].position.y,vertBoxArray[i].position.z)
+				checkVec.applyMatrix4(rotatable.matrixWorld)
+				//checkVec.applyMatrix4(scene.matrixWorld)
+			
+				var checkX = Math.abs(connector.position.x - checkVec.x) 
+				var checkY = Math.abs(connector.position.y - checkVec.y) 
+				var checkZ = Math.abs(connector.position.z - checkVec.z) 
+				
+				if(checkX < params.sensitivity && checkY < params.sensitivity && checkZ < params.sensitivity){
+					
+					//check to make sure that no other boxes are being pulled
+					var anyPulled = false
+					for(var j =0;j< vertBoxArray.length;j++){
+						if(vertBoxArray[j].beingPulled == true){
+							anyPulled = true
+							break	
+						}
+					}
+					
+					//if there are no other verticies being pulled, grab this one!
+					if(anyPulled == false){
+						vertBoxArray[i].beingPulled = true
+					}
+				}
+				
+				if(vertBoxArray[i].beingPulled == true){
+					
+						var mInverse = new THREE.Matrix4().getInverse(rotatable.matrixWorld );
+						
+						connectorCopy = new THREE.Vector3(connector.position.x,connector.position.y, connector.position.z)
+						
+						connectorCopy.applyMatrix4( mInverse );
+						
+					
+						//moves the vertex to the right position
+						sphere.geometry.vertices[i].x = connectorCopy.x
+						sphere.geometry.vertices[i].y = connectorCopy.y
+						sphere.geometry.vertices[i].z = connectorCopy.z
+					
+					
+					
+					//updates teh geometery
+					sphere.geometry.verticesNeedUpdate = true;
+				}	
+				
+			}
+			
+		}
+		
+		//sets all verticies to false for being pulled
+		function clearPull(){
+			for(var i =0;i< vertBoxArray.length;i++){
+				vertBoxArray[i].beingPulled = false
+			}	
+		}
+		
+		
 
 
 
-var latestFrame 
+
+
+window.latestFrame 
 Leap.loop(function(frame) {
-	  
+	
+	 
+	 
+	 if(!frame.pointables[0]){
+	 	//move pointable2 / connector out of the frame
+		pointable1.position.x = 2000000
+				pointable2.position.x = 2000000
+				connector.position.x = 20000000 
+	 }
 	  if(frame.pointables[0]){
+		  
+		  
 		 	pointable1.position.z = -frame.pointables[0].tipPosition[0]*2
 		  	pointable1.position.y = (frame.pointables[0].tipPosition[1]-250)*2
 			pointable1.position.x = frame.pointables[0].tipPosition[2]*2
@@ -287,26 +383,38 @@ Leap.loop(function(frame) {
 				connector.position.x = 20000000  
 			}
 	  }
-	  
-	  //if there are two pointables, get the midpoint between them, and assign the 'connector to this position
- 	 if(frame.pointables[1]){
-		 	pointable2.position.z = -frame.pointables[1].tipPosition[0]*2
-		  	pointable2.position.y = (frame.pointables[1].tipPosition[1]-250)*2
+	
+	
+			  //if there are two pointables, get the midpoint between them, and assign the 'connector to this position
+	 if(frame.pointables[1]){
+			pointable2.position.z = -frame.pointables[1].tipPosition[0]*2
+			pointable2.position.y = (frame.pointables[1].tipPosition[1]-250)*2
 			pointable2.position.x = frame.pointables[1].tipPosition[2]*2
 			
+			
+			
+			
+			//check to see if any verticies are being pulled
+			checkPull()
 			
 			connector.position.x = pointable1.position.x + (pointable2.position.x -pointable1.position.x)/2
 			connector.position.y = pointable1.position.y + (pointable2.position.y -pointable1.position.y)/2
 			connector.position.z = pointable1.position.z + (pointable2.position.z -pointable1.position.z)/2
-			
-			//check to see if any verticies are being pulled
-			checkPull()
 	  }
+  
+
+	  
+	  
 	  
 	  //pull the verticies
-		pull();
+	   	  
+
+		
+		update();
+		animate();
+
 	  
-	  rotatable.rotation.y += 0.001
+	  //rotatable.rotation.y += 0.001
 	  	 
 		/*for(var i =0;i< vertBoxArray.length;i++){
 			
@@ -317,11 +425,42 @@ Leap.loop(function(frame) {
 	  
 	
 	  latestFrame = frame
-	  	  
-	  animate();
-})
+	 
+});
 
 
+var update = function (){
+	if (params.vertexMarkers == true){
+		for(var i =0; i < vertBoxArray.length;i++){
+			vertBoxArray[i].position.x = sphere.geometry.vertices[i].x 
+			vertBoxArray[i].position.y = sphere.geometry.vertices[i].y
+			vertBoxArray[i].position.z = sphere.geometry.vertices[i].z
+			
+			vertBoxArray[i].scale.x = vertBoxArray[i].scale.y = vertBoxArray[i].scale.z = params.sensitivity
+			connector.scale.x = connector.scale.y = connector.scale.z = params.sensitivity
+			
+		}
+	}
+	
+	camera.position.x = params.cameraDistance 
+	
+	
+	if(params.constantRotation == true){
+		rotatable.rotation.x += params.rotationSpeedX/1000
+		rotatable.rotation.y += params.rotationSpeedY/1000
+		rotatable.rotation.z += params.rotationSpeedZ/1000
+	}else{
+		rotatable.rotation.x =(params.rotationX/180) * Math.PI
+		rotatable.rotation.y =(params.rotationY/180) * Math.PI
+		rotatable.rotation.z =(params.rotationZ/180) * Math.PI
+	}
+}
+
+
+</script>
+
+</body>
+</html>
 
 
 
