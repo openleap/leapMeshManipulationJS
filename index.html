@@ -437,11 +437,11 @@ var update = function (){
 			vertBoxArray[i].position.z = sphere.geometry.vertices[i].z
 			
 			vertBoxArray[i].scale.x = vertBoxArray[i].scale.y = vertBoxArray[i].scale.z = params.sensitivity
-			connector.scale.x = connector.scale.y = connector.scale.z = params.sensitivity
+			
 			
 		}
 	}
-	
+	connector.scale.x = connector.scale.y = connector.scale.z = params.sensitivity
 	camera.position.x = params.cameraDistance 
 	
 	
