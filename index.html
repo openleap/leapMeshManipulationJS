@@ -110,7 +110,9 @@ function onWindowResize() {
 
 //using normal material, because it takes the least set up
 var material = new THREE.MeshNormalMaterial()
-material.side=2
+material.side=THREE.DoubleSide
+material.transparent = true
+material.opacity = 1
 
 
 // This is the geometry we will be altering
@@ -163,9 +165,8 @@ for(var i = 0; i<geom.vertices.length; i++){
 	
 	//creates vertex markers
 	var vertBox = new THREE.Mesh(smallBox, material)
-	vertBox.position.x = geom.vertices[i].x
-	vertBox.position.y = geom.vertices[i].y
-	vertBox.position.z = geom.vertices[i].z
+	vertBox.position = new THREE.Vector3(geom.vertices[i].x,geom.vertices[i].y,geom.vertices[i].z)
+
 	vertBox.beingPulled = false
 	
 	//adds to rotatable scene
@@ -186,19 +187,25 @@ var connection = {
 
 connector = new THREE.Mesh(new THREE.CubeGeometry(2,2,2),material)
 scene.add(connector)
-
+var checkVec
 
 //checks to see if a vertex is being pulled
 function checkPull(){
- 	
+	
+	
+	//console.log(checkVec)
+	
+	//console.log(checkVec)
 	for(var i =0;i< vertBoxArray.length;i++){
+		checkVec = new THREE.Vector3(vertBoxArray[i].position.x, vertBoxArray[i].position.y,vertBoxArray[i].position.z)
+		checkVec.applyMatrix4(rotatable.matrixWorld)
+		//checkVec.applyMatrix4(scene.matrixWorld)
+	
+		var checkX = Math.abs(connector.position.x - checkVec.x) 
+		var checkY = Math.abs(connector.position.y - checkVec.y) 
+		var checkZ = Math.abs(connector.position.z - checkVec.z) 
 		
-		//how close the connector is to the vertex
-		var checkX = Math.abs(connector.position.x - vertBoxArray[i].position.x) 
-		var checkY = Math.abs(connector.position.y - vertBoxArray[i].position.y) 
-		var checkZ = Math.abs(connector.position.z - vertBoxArray[i].position.z) 
-		
-		if(checkX < 10 && checkY < 10 && checkZ < 10){
+		if(checkX < 20 && checkY < 20 && checkZ < 20){
 			
 			//check to make sure that no other boxes are being pulled
 			var anyPulled = false
@@ -212,6 +219,8 @@ function checkPull(){
 			//if there are no other verticies being pulled, grab this one!
 			if(anyPulled == false){
 				vertBoxArray[i].beingPulled = true
+				
+				
 			}
 		}	
 		
@@ -232,16 +241,23 @@ function pull(){
 		
 		if(vertBoxArray[i].beingPulled == true){
 			
-			//moves vertex marker to correct position
-			vertBoxArray[i].position.x = connector.position.x
-			vertBoxArray[i].position.y = connector.position.y
-			vertBoxArray[i].position.z = connector.position.z
+				var mInverse = new THREE.Matrix4().getInverse(rotatable.matrixWorld );
+				
+				connectorCopy = new THREE.Vector3(connector.position.x,connector.position.y, connector.position.z)
+				
+				connectorCopy.applyMatrix4( mInverse );
+				
+				vertBoxArray[i].position.x = connectorCopy.x//checkVec.x
+				vertBoxArray[i].position.y = connectorCopy.y
+				vertBoxArray[i].position.z = connectorCopy.z
 			
 			
-			//moves the vertex to the right position
-			sphere.geometry.vertices[i].x = connector.position.x
-			sphere.geometry.vertices[i].y = connector.position.y
-			sphere.geometry.vertices[i].z = connector.position.z
+				//moves the vertex to the right position
+				sphere.geometry.vertices[i].x = vertBoxArray[i].position.x 
+				sphere.geometry.vertices[i].y = vertBoxArray[i].position.y
+				sphere.geometry.vertices[i].z = vertBoxArray[i].position.z
+			
+			
 			
 			//updates teh geometery
 			sphere.geometry.verticesNeedUpdate = true;
@@ -288,8 +304,18 @@ Leap.loop(function(frame) {
 	  }
 	  
 	  //pull the verticies
-	  pull();
+		pull();
 	  
+	  rotatable.rotation.y += 0.001
+	  	 
+		/*for(var i =0;i< vertBoxArray.length;i++){
+			
+			//how close the connector is to the vertex
+			sphere.geometry.vertices[i].applyMatrix4( rotatable.matrixWorld );
+			vertBoxArray[i].position.applyMatrix4( rotatable.matrixWorld );
+		}*/
+	  
+	
 	  latestFrame = frame
 	  	  
 	  animate();
