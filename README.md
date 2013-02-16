@@ -1,3 +1,8 @@
+###An <a href="openleap.org">OpenLeap</a> project started by @cabbibo.
+
+leapMeshManipulationJS
+======================
+
 Javascript Based LEAP MOTION Mesh Manipulation
 
 Controls right now: 
